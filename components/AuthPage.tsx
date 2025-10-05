@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { UserIcon, MailIcon, LockIcon, SpinnerIcon } from './icons';
 import { User } from '../types';
+import { loginUser, registerUser } from '../services/authApi';
 
 interface AuthPageProps {
   onAuthSuccess: (user: User) => void;
@@ -15,71 +16,24 @@ const AuthPage: React.FC<AuthPageProps> = ({ onAuthSuccess }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  // Helper to get users from localStorage
-  const getUsers = (): User[] => {
-    const usersJSON = localStorage.getItem('xylos_ai_users');
-    return usersJSON ? JSON.parse(usersJSON) : [];
-  };
-
-  // Helper to save users to localStorage
-  const saveUsers = (users: User[]) => {
-    localStorage.setItem('xylos_ai_users', JSON.stringify(users));
-  };
-
-  const handleLogin = () => {
-    const users = getUsers();
-    const user = users.find(u => u.email === email && u.password === password);
-
-    if (user) {
-      setError('');
-      // Update last login time
-      user.lastLogin = new Date().toISOString();
-      saveUsers(users);
-      onAuthSuccess(user);
-    } else {
-      setError('Invalid email or password.');
-    }
-  };
-
-  const handleSignUp = () => {
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters long.');
-      return;
-    }
-    const users = getUsers();
-    if (users.some(u => u.email === email)) {
-      setError('An account with this email already exists.');
-      return;
-    }
-
-    setError('');
-    const newUser: User = {
-      name,
-      email,
-      password,
-      avatar: `https://robohash.org/${email}.png?size=150x150&set=set4`,
-      lastLogin: new Date().toISOString(),
-    };
-    
-    users.push(newUser);
-    saveUsers(users);
-    onAuthSuccess(newUser);
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
 
-    // Simulate network latency
-    setTimeout(() => {
+    try {
+      let user;
       if (isLoginView) {
-        handleLogin();
+        user = await loginUser(email, password);
       } else {
-        handleSignUp();
+        user = await registerUser(name, email, password);
       }
+      onAuthSuccess(user);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
   };
   
   const toggleView = () => {

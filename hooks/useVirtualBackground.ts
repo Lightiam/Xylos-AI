@@ -66,19 +66,16 @@ export function useVirtualBackground(
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(results.segmentationMask, 0, 0, canvas.width, canvas.height);
 
+      // Draw the user video on top of the mask
+      ctx.globalCompositeOperation = 'source-in';
+      ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
+      
+      // Draw the background behind the user
+      ctx.globalCompositeOperation = 'destination-over';
       if (isImageUrl) {
-        // Image Background Logic
-        ctx.globalCompositeOperation = 'source-in';
-        ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
-        
-        ctx.globalCompositeOperation = 'destination-atop';
         ctx.drawImage(bgImage, 0, 0, canvas.width, canvas.height);
       } else {
         // Blur Background Logic
-        ctx.globalCompositeOperation = 'source-in';
-        ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
-
-        ctx.globalCompositeOperation = 'destination-over';
         ctx.filter = 'blur(16px)';
         ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
       }

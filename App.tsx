@@ -10,6 +10,7 @@ import AuthPage from './components/AuthPage';
 import { useVirtualBackground } from './hooks/useVirtualBackground';
 import VirtualBackgroundPanel from './components/VirtualBackgroundPanel';
 import SettingsModal from './components/SettingsModal';
+import { updateUser } from './services/authApi';
 
 const initialOtherParticipants: Omit<Participant, 'name' | 'isHandRaised' | 'avatar'>[] = [
   { id: 'participant-2', isMuted: false, isVideoOff: false, isSelf: false, isScreenSharing: false },
@@ -225,21 +226,20 @@ const App: React.FC = () => {
   const handleOpenSettings = () => setIsSettingsModalOpen(true);
   const handleCloseSettings = () => setIsSettingsModalOpen(false);
   
-  const handleSaveSettings = (settings: { name: string; avatar: string }) => {
+  const handleSaveSettings = async (settings: { name: string; avatar: string }) => {
     if (!currentUser) return;
     
-    const updatedUser = { ...currentUser, name: settings.name, avatar: settings.avatar };
-    setCurrentUser(updatedUser);
-    
-    const usersJSON = localStorage.getItem('xylos_ai_users');
-    let users: User[] = usersJSON ? JSON.parse(usersJSON) : [];
-    users = users.map(u => u.email === updatedUser.email ? updatedUser : u);
-    localStorage.setItem('xylos_ai_users', JSON.stringify(users));
-
-    setParticipants(prev =>
-      prev.map(p => (p.isSelf ? { ...p, name: settings.name, avatar: settings.avatar } : p))
-    );
-    setIsSettingsModalOpen(false);
+    try {
+      const updatedUser = await updateUser(currentUser.email, settings);
+      setCurrentUser(updatedUser);
+      setParticipants(prev =>
+        prev.map(p => (p.isSelf ? { ...p, name: updatedUser.name, avatar: updatedUser.avatar } : p))
+      );
+      setIsSettingsModalOpen(false);
+    } catch (error) {
+      console.error("Failed to save settings:", error);
+      alert("Could not save your settings. Please try again.");
+    }
   };
 
   const handleToggleHandRaise = useCallback(() => {
