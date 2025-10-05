@@ -12,21 +12,16 @@ import VirtualBackgroundPanel from './components/VirtualBackgroundPanel';
 import SettingsModal from './components/SettingsModal';
 
 const initialOtherParticipants: Omit<Participant, 'name' | 'isHandRaised' | 'avatar'>[] = [
-  { id: '2', isMuted: false, isVideoOff: false, isSelf: false, isScreenSharing: false },
-  { id: '3', isMuted: true, isVideoOff: false, isSelf: false, isScreenSharing: false },
-  { id: '4', isMuted: false, isVideoOff: true, isSelf: false, isScreenSharing: false },
-];
-
-const initialMessages: ChatMessage[] = [
-    { id: uuidv4(), senderName: 'Maria Garcia', text: 'Hey everyone! Glad you could make it.', timestamp: '10:30 AM', isSelf: false },
-    { id: uuidv4(), senderName: 'You', text: 'Hi Maria! Looking forward to this.', timestamp: '10:31 AM', isSelf: true },
-    { id: uuidv4(), senderName: 'Chen Wei', text: 'Hello! My audio is a bit choppy, so I\'ll stay muted unless I need to speak.', timestamp: '10:31 AM', isSelf: false },
+  { id: 'participant-2', isMuted: false, isVideoOff: false, isSelf: false, isScreenSharing: false },
+  { id: 'participant-3', isMuted: true, isVideoOff: false, isSelf: false, isScreenSharing: false },
+  { id: 'participant-4', isMuted: false, isVideoOff: true, isSelf: false, isScreenSharing: false },
 ];
 
 const participantNames = ['Maria Garcia', 'Chen Wei', 'Emily Carter'];
 
 const App: React.FC = () => {
   const [participants, setParticipants] = useState<Participant[]>(() => {
+    // Other participants are for demonstration; in a real app, this would come from a server
     const otherParticipants: Participant[] = initialOtherParticipants.map((p, index) => ({
       ...p,
       name: participantNames[index],
@@ -36,7 +31,7 @@ const App: React.FC = () => {
     return [...otherParticipants];
   });
 
-  const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isNewMeetingModalOpen, setIsNewMeetingModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
@@ -50,6 +45,38 @@ const App: React.FC = () => {
 
   const localParticipant = participants.find(p => p.isSelf);
   
+  const handleAuthSuccess = useCallback((user: User) => {
+    setCurrentUser(user);
+    const selfParticipant: Participant = { 
+        id: uuidv4(), 
+        name: user.name, 
+        isMuted: false, 
+        isVideoOff: false, 
+        isSelf: true, 
+        isScreenSharing: false, 
+        isHandRaised: false,
+        avatar: user.avatar 
+    };
+    setParticipants(prev => [selfParticipant, ...prev.filter(p => !p.isSelf)]);
+    setIsAuthenticated(true);
+    setMessages([
+        { id: uuidv4(), senderName: 'System', text: `Welcome, ${user.name}!`, timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), isSelf: false },
+    ]);
+  }, []);
+
+  // Check for an active session on initial app load
+  useEffect(() => {
+    const activeUserEmail = sessionStorage.getItem('xylos_ai_active_user');
+    if (activeUserEmail) {
+      const usersJSON = localStorage.getItem('xylos_ai_users');
+      const users: User[] = usersJSON ? JSON.parse(usersJSON) : [];
+      const user = users.find(u => u.email === activeUserEmail);
+      if (user) {
+        handleAuthSuccess(user);
+      }
+    }
+  }, [handleAuthSuccess]);
+
   // Get user media on mount after authentication
   useEffect(() => {
     if (isAuthenticated) {
@@ -163,26 +190,20 @@ const App: React.FC = () => {
   const handleNewMeeting = () => setIsNewMeetingModalOpen(true);
   const handleCloseNewMeetingModal = () => setIsNewMeetingModalOpen(false);
   
-  const handleAuthSuccess = (user: User) => {
-    setCurrentUser(user);
-    const selfParticipant: Participant = { 
-        id: '1', 
-        name: user.name, 
-        isMuted: false, 
-        isVideoOff: false, 
-        isSelf: true, 
-        isScreenSharing: false, 
-        isHandRaised: false,
-        avatar: user.avatar 
-    };
-    setParticipants(prev => [selfParticipant, ...prev.filter(p => !p.isSelf)]);
-    
-    // Update initial messages to reflect the current user's name
-    setMessages(prev => prev.map(msg => 
-        msg.isSelf ? { ...msg, senderName: user.name } : msg
-    ));
+  const handleLoginOrSignup = (user: User) => {
+    sessionStorage.setItem('xylos_ai_active_user', user.email);
+    handleAuthSuccess(user);
+  };
 
-    setIsAuthenticated(true);
+  const handleLogout = () => {
+    sessionStorage.removeItem('xylos_ai_active_user');
+    setCurrentUser(null);
+    setIsAuthenticated(false);
+    setParticipants(prev => prev.filter(p => !p.isSelf));
+    // Optional: Reset other states
+    setMessages([]);
+    setIsChatOpen(false);
+    setMeetingDetails(null);
   };
 
   const handleCreateMeeting = (details: { title: string; date?: string; time?: string }) => {
@@ -210,7 +231,6 @@ const App: React.FC = () => {
     const updatedUser = { ...currentUser, name: settings.name, avatar: settings.avatar };
     setCurrentUser(updatedUser);
     
-    // Update our simulated database in localStorage
     const usersJSON = localStorage.getItem('xylos_ai_users');
     let users: User[] = usersJSON ? JSON.parse(usersJSON) : [];
     users = users.map(u => u.email === updatedUser.email ? updatedUser : u);
@@ -229,7 +249,7 @@ const App: React.FC = () => {
   }, []);
 
   if (!isAuthenticated) {
-    return <AuthPage onAuthSuccess={handleAuthSuccess} />;
+    return <AuthPage onAuthSuccess={handleLoginOrSignup} />;
   }
 
   return (
@@ -253,6 +273,7 @@ const App: React.FC = () => {
                 <Header 
                     onNewMeeting={handleNewMeeting}
                     onOpenSettings={handleOpenSettings}
+                    onLogout={handleLogout}
                     meetingDetails={meetingDetails}
                 />
                 <div className="flex-1 flex items-center justify-center">

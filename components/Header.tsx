@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
-import { SpinnerIcon, SettingsIcon, CalendarIcon } from './icons';
+import { SpinnerIcon, SettingsIcon, CalendarIcon, LogoutIcon } from './icons';
 import IconButton from './IconButton';
 
 interface HeaderProps {
   onNewMeeting: () => void;
   onOpenSettings: () => void;
+  onLogout: () => void;
   meetingDetails: { title: string; date?: string; time?: string } | null;
 }
 
-const Header: React.FC<HeaderProps> = ({ onNewMeeting, onOpenSettings, meetingDetails }) => {
+const Header: React.FC<HeaderProps> = ({ onNewMeeting, onOpenSettings, onLogout, meetingDetails }) => {
   const [roomId, setRoomId] = useState('');
   const [isJoining, setIsJoining] = useState(false);
 
@@ -52,6 +53,9 @@ const Header: React.FC<HeaderProps> = ({ onNewMeeting, onOpenSettings, meetingDe
       <div className="flex items-center space-x-2">
          <IconButton onClick={onOpenSettings} variant="default" tooltip="Settings">
             <SettingsIcon className="w-5 h-5" />
+         </IconButton>
+         <IconButton onClick={onLogout} variant="default" tooltip="Logout">
+            <LogoutIcon className="w-5 h-5" />
          </IconButton>
          <button
           onClick={onNewMeeting}
