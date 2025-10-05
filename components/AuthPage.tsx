@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { UserIcon, MailIcon, LockIcon, SpinnerIcon } from './icons';
 import { User } from '../types';
-import { loginUser, registerUser } from '../services/authApi';
+import { login, register } from '../services/api';
 
 interface AuthPageProps {
   onAuthSuccess: (user: User) => void;
@@ -22,13 +22,13 @@ const AuthPage: React.FC<AuthPageProps> = ({ onAuthSuccess }) => {
     setError('');
 
     try {
-      let user;
+      let authResponse;
       if (isLoginView) {
-        user = await loginUser(email, password);
+        authResponse = await login(email, password);
       } else {
-        user = await registerUser(name, email, password);
+        authResponse = await register(name, email, password);
       }
-      onAuthSuccess(user);
+      onAuthSuccess(authResponse.user);
     } catch (err: any) {
       setError(err.message);
     } finally {

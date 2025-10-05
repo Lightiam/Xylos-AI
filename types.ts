@@ -18,9 +18,10 @@ export interface ChatMessage {
 }
 
 export interface User {
+  id: string; // Corresponds to the database primary key
   email: string;
   name: string;
-  password?: string; // Stored for simulation purposes
+  password?: string; // Should not be sent to client from a real API
   avatar: string;
   lastLogin: string | null;
 }

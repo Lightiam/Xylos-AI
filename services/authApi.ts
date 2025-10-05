@@ -1,96 +1,123 @@
 import { User } from '../types';
+import * as db from './database';
 
-// --- Helper Functions to Simulate Database ---
+// =================================================================
+// NOTE FOR THE BACKEND TEAM:
+// This file simulates a backend API service. It contains business logic
+// like password checking and token generation. This should be implemented
+// on your server, and the functions here should be replaced with `fetch`
+// calls to your API endpoints.
+// =================================================================
 
-// This simulates a user database table using localStorage.
-const getUsersFromDB = (): User[] => {
-  const usersJSON = localStorage.getItem('xylos_ai_users');
-  return usersJSON ? JSON.parse(usersJSON) : [];
+// --- Token Management (Simulates JWT) ---
+
+const TOKEN_KEY = 'xylos_ai_auth_token';
+
+// In a real app, this would be a secure, signed JWT.
+// Here, we're just base64 encoding the user ID.
+const generateToken = (user: User): string => btoa(JSON.stringify({ userId: user.id, issuedAt: Date.now() }));
+
+const decodeToken = (token: string): { userId: string } | null => {
+    try {
+        return JSON.parse(atob(token));
+    } catch (e) {
+        return null;
+    }
 };
 
-// This simulates writing back to the user database table.
-const saveUsersToDB = (users: User[]) => {
-  localStorage.setItem('xylos_ai_users', JSON.stringify(users));
-};
+const getToken = (): string | null => sessionStorage.getItem(TOKEN_KEY);
+const setToken = (token: string): void => sessionStorage.setItem(TOKEN_KEY, token);
+const removeToken = (): void => sessionStorage.removeItem(TOKEN_KEY);
 
-// --- Simulated API Functions ---
-
-// Simulates network latency
-const simulateDelay = (ms: number) => new Promise(res => setTimeout(res, ms));
+// --- Authentication API Functions ---
 
 /**
- * Simulates a login API call.
- * @throws Will throw an error if credentials are invalid.
+ * Logs in a user.
  */
-export const loginUser = async (email: string, password: string): Promise<User> => {
-  await simulateDelay(1000);
-  
-  const users = getUsersFromDB();
+export const login = async (email: string, password: string): Promise<{ user: User, token: string }> => {
   const loginEmail = email.trim().toLowerCase();
-  const user = users.find(u => u.email === loginEmail && u.password === password);
+  const user = await db.findUserByEmail(loginEmail);
 
-  if (user) {
-    user.lastLogin = new Date().toISOString();
-    saveUsersToDB(users);
-    return user;
+  // In a real backend, you'd use a library like bcrypt to compare hashed passwords
+  if (user && user.password === password) {
+    await db.updateUserLoginTime(user.id);
+    const token = generateToken(user);
+    setToken(token);
+    const { password: _, ...userWithoutPassword } = user; // Don't send password to client
+    return { user: userWithoutPassword, token };
   } else {
     throw new Error('Invalid email or password.');
   }
 };
 
 /**
- * Simulates a user registration API call.
- * @throws Will throw an error if the email is already in use or password is too short.
+ * Registers a new user.
  */
-export const registerUser = async (name: string, email: string, password: string): Promise<User> => {
-  await simulateDelay(1000);
-
+export const register = async (name: string, email: string, password: string): Promise<{ user: User, token: string }> => {
   if (password.length < 6) {
     throw new Error('Password must be at least 6 characters long.');
   }
-
-  const users = getUsersFromDB();
   const signupEmail = email.trim().toLowerCase();
-
-  if (users.some(u => u.email === signupEmail)) {
+  
+  const existingUser = await db.findUserByEmail(signupEmail);
+  if (existingUser) {
     throw new Error('An account with this email already exists.');
   }
 
-  const newUser: User = {
+  const newUser = await db.createUser({
     name: name.trim(),
     email: signupEmail,
-    password, // In a real backend, this would be hashed
+    password, // In a real backend, this would be hashed before saving
     avatar: `https://robohash.org/${signupEmail}.png?size=150x150&set=set4`,
-    lastLogin: new Date().toISOString(),
-  };
-  
-  users.push(newUser);
-  saveUsersToDB(users);
-  return newUser;
+  });
+
+  const token = generateToken(newUser);
+  setToken(token);
+
+  const { password: _, ...userWithoutPassword } = newUser; // Don't send password to client
+  return { user: userWithoutPassword, token };
 };
 
 /**
- * Simulates an API call to update user settings.
- * @throws Will throw an error if the user is not found.
+ * Logs out the current user.
  */
-export const updateUser = async (email: string, settings: { name: string; avatar: string }): Promise<User> => {
-  await simulateDelay(500);
-  
-  const users = getUsersFromDB();
-  const userIndex = users.findIndex(u => u.email === email);
+export const logout = (): void => {
+  removeToken();
+};
 
-  if (userIndex === -1) {
-    throw new Error('User not found.');
+/**
+ * Validates the current session token and fetches the user.
+ */
+export const validateSession = async (): Promise<User | null> => {
+  const token = getToken();
+  if (!token) return null;
+
+  const decoded = decodeToken(token);
+  if (!decoded || !decoded.userId) {
+    removeToken();
+    return null;
   }
-  
-  const updatedUser = {
-    ...users[userIndex],
-    name: settings.name,
-    avatar: settings.avatar,
-  };
 
-  users[userIndex] = updatedUser;
-  saveUsersToDB(users);
-  
-  return updatedUser;
+  try {
+    const user = await db.findUserById(decoded.userId);
+    if (user) {
+      const { password: _, ...userWithoutPassword } = user;
+      return userWithoutPassword;
+    }
+    return null;
+  } catch (error) {
+    console.error('Session validation failed:', error);
+    removeToken();
+    return null;
+  }
+};
+
+/**
+ * Updates a user's settings.
+ */
+export const updateUser = async (userId: string, settings: { name: string; avatar: string }): Promise<User> => {
+  // In a real app, the API would validate that the logged-in user has permission to update this profile.
+  const updatedUser = await db.updateUserProfile(userId, settings);
+  const { password: _, ...userWithoutPassword } = updatedUser;
+  return userWithoutPassword;
 };
