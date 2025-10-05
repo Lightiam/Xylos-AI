@@ -46,8 +46,7 @@ const AuthPage: React.FC<AuthPageProps> = ({ onAuthSuccess }) => {
 
   return (
     <div 
-        className="h-screen w-screen text-white flex items-center justify-center font-sans p-4 bg-cover bg-center"
-        style={{ backgroundImage: "url('https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=2070&auto=format&fit=crop')" }}
+        className="h-screen w-screen text-white flex items-center justify-center font-sans p-4 bg-[#1A1A1A]"
     >
       <div className="w-full max-w-md bg-gray-800 bg-opacity-70 backdrop-blur-md p-8 rounded-2xl shadow-xl border border-gray-600">
         <div className="text-center mb-8">

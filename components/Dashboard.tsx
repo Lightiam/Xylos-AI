@@ -12,8 +12,7 @@ interface DashboardProps {
 const Dashboard: React.FC<DashboardProps> = ({ user, onStartInstantMeeting, onScheduleMeeting, onLogout }) => {
   return (
     <div 
-        className="h-screen w-screen text-white flex items-center justify-center font-sans p-4 bg-cover bg-center"
-        style={{ backgroundImage: "url('https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=2070&auto=format&fit=crop')" }}
+        className="h-screen w-screen text-white flex items-center justify-center font-sans p-4 bg-[#1A1A1A]"
     >
       <div className="absolute top-4 right-4">
         <button onClick={onLogout} className="text-sm bg-gray-800 bg-opacity-50 hover:bg-opacity-80 transition-colors text-gray-300 hover:text-white px-4 py-2 rounded-lg">
