@@ -1,0 +1,9 @@
+{
+  "name": "Xylos AI",
+  "description": "A modern, peer-to-peer video conferencing application with a sleek user interface, real-time chat, and intuitive controls, built with React and powered by Gemini.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "display-capture"
+  ]
+}
